@@ -411,11 +411,8 @@ func (fs FS) ReadFile(file File) []byte {
 			toRead = file.Record.FileSize - readTotal
 		}
 
-		// fmt.Printf("Going to read %d bytes... ", toRead)
 		read, _ := io.ReadAtLeast(fs.Data, buf, int(toRead))
-		// fmt.Printf("read %d bytes\n", read)
 		readTotal += uint32(read)
-		// fmt.Printf("Read a total %d of %d bytes\n", readTotal, file.Record.FileSize)
 		ret.Write(buf[0:toRead])
 
 		secFAT, offsetFAT := fs.ClusterToEntry(cluster)
