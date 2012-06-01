@@ -398,9 +398,7 @@ func (fs FS) ReadFile(file File) []byte {
 	for {
 		byteStart := fs.FirstSectorOfCluster(cluster) * uint32(fs.BPB.BytsPerSec)
 		fs.Data.Seek(int64(byteStart), 0)
-		// TODO consider total byte size of file
 		// TODO check error
-		// TODO check number of read bytes
 
 		toRead := file.Record.FileSize - readTotal
 		if toRead > uint32(fs.BPB.BytsPerSec)*uint32(fs.BPB.SecPerClus) {
