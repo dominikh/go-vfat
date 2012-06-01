@@ -117,6 +117,8 @@ type FileRecord struct {
 
 func (fs FS) FATSectorCount() uint32 {
 	// Taken straight from the specification
+	// Works for 12(?), 16 and 32
+
 	if fs.BPB.FATSz16 != 0 {
 		return uint32(fs.BPB.FATSz16)
 	}
@@ -156,12 +158,14 @@ func (fs FS) TotalSectorCount() uint32 {
 }
 
 func (fs FS) DataSectorCount() uint32 {
+	// Works for 12(?), 16 and 32
 	return fs.TotalSectorCount() - (uint32(fs.BPB.ResvdSecCnt) + (uint32(fs.BPB.NumFATs) * fs.FATSectorCount()) + fs.RootDirSectorCount())
 }
 
 func (fs FS) FirstSectorOfCluster(cluster uint32) uint32 {
 	// Taken straight from the specification
 	// Works for 12, 16 and 32
+
 	return ((cluster - 2) * uint32(fs.BPB.SecPerClus)) + fs.FirstDataSector()
 }
 
@@ -191,6 +195,7 @@ func (fs FS) ClusterCount() uint32 {
 
 func (fs FS) DetermineType() Type {
 	// Taken straight from the specification
+	// Works for 12, 16 and 32
 	if fs.ClusterCount() < fat12ClusterCount {
 		return FAT12
 	} else if fs.ClusterCount() < fat16ClusterCount {
@@ -229,6 +234,7 @@ func NewFS(r io.ReadSeeker) *FS {
 }
 
 func (file FileRecord) ProperName() string {
+	// Works for 12, 16 and 32
 	s := &bytes.Buffer{}
 
 	if file.Name[0] == 0x05 {
