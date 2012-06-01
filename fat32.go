@@ -307,7 +307,7 @@ func (ln LongName) String() string {
 type File struct {
 	ShortName string
 	LongName  string
-	Record    *FileRecord
+	*FileRecord
 	fs        FS
 }
 
@@ -336,10 +336,10 @@ func main() {
 func listFiles(fs *FS, files []File) {
 	for _, file := range files {
 		fmt.Println("Name:", file.LongName)
-		fmt.Println("Size:", file.Record.FileSize)
+		fmt.Println("Size:", file.FileSize)
 		fmt.Println("Data:", string(file.Read()))
-		fmt.Println("Directory:", file.Record.IsDirectory())
-		if file.Record.IsDirectory() {
+		fmt.Println("Directory:", file.IsDirectory())
+		if file.IsDirectory() {
 			subfiles, _ := file.Files()
 			listFiles(fs, subfiles[2:])
 		}
@@ -406,11 +406,11 @@ func (fs FS) readDirectoryFromSector(sector uint32) []File {
 // TODO think of a clever handling of . and .. entries (which, btw, do
 // not exist in the root directory)
 func (file File) Files() ([]File, error) {
-	if !file.Record.IsDirectory() {
+	if !file.IsDirectory() {
 		return nil, errors.New("not a directory")
 	}
 
-	return file.fs.readDirectoryFromSector(file.fs.FirstSectorOfCluster(file.Record.FirstCluster())), nil
+	return file.fs.readDirectoryFromSector(file.fs.FirstSectorOfCluster(file.FirstCluster())), nil
 }
 
 func (file File) Read() []byte {
@@ -422,12 +422,12 @@ func (file File) Read() []byte {
 	// file.Record.FileSize is 32 bit, so using that for the readSize
 	// to avoid casts.
 	readSize := uint32(fs.BPB.BytsPerSec) * uint32(fs.BPB.SecPerClus)
-	if readSize > file.Record.FileSize {
-		readSize = file.Record.FileSize
+	if readSize > file.FileSize {
+		readSize = file.FileSize
 	}
 
 	buf := make([]byte, readSize)
-	cluster := file.Record.FirstCluster()
+	cluster := file.FirstCluster()
 	readTotal := uint32(0)
 	for {
 		byteStart := fs.FirstSectorOfCluster(cluster) * uint32(fs.BPB.BytsPerSec)
@@ -435,8 +435,8 @@ func (file File) Read() []byte {
 		// TODO check error
 
 		toRead := readSize
-		if toRead > (file.Record.FileSize - readTotal) {
-			toRead = file.Record.FileSize - readTotal
+		if toRead > (file.FileSize - readTotal) {
+			toRead = file.FileSize - readTotal
 		}
 
 		read, _ := io.ReadAtLeast(fs.Data, buf, int(toRead))
