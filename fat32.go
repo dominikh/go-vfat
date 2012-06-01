@@ -307,7 +307,6 @@ func (ln LongName) String() string {
 	return string(utf16.Decode(s))
 }
 
-// TODO maybe put a reference to the FS into File to nicen up the API?
 type File struct {
 	ShortName string
 	LongName  string
