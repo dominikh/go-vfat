@@ -20,6 +20,11 @@ import (
 type Attribute uint8
 
 const (
+	eocFAT32 = 0x0FFFFFF8
+	eocFAT16 = 0xFFF8
+)
+
+const (
 	fat12ClusterCount uint32 = 4085
 	fat16ClusterCount        = 65525
 )
@@ -308,7 +313,7 @@ type File struct {
 	ShortName string
 	LongName  string
 	*FileRecord
-	fs        FS
+	fs FS
 }
 
 func (file FileRecord) FirstCluster() uint32 {
@@ -449,7 +454,7 @@ func (file File) Read() []byte {
 		} else if fs.DetermineType() == FAT16 {
 			var fat uint16
 			binary.Read(fs.Data, binary.LittleEndian, &fat)
-			if fat >= 0xFFF8 {
+			if fat >= eocFAT16 {
 				break
 			}
 
@@ -459,7 +464,7 @@ func (file File) Read() []byte {
 			binary.Read(fs.Data, binary.LittleEndian, &fat)
 			fat &= 0x0FFFFFFF
 
-			if fat >= 0x0FFFFFF8 {
+			if fat >= eocFAT32 {
 				break
 			}
 
