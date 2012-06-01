@@ -335,7 +335,6 @@ func listFiles(fs *FS, files []File) ( ) {
     for _, file := range files {
 				fmt.Println("Name:", file.LongName)
 		fmt.Println("Size:", file.Record.FileSize)
-		// FIXME apparently there is a trailing newline in the data
 		fmt.Println("Data:", string(fs.ReadFile(file)))
 		fmt.Println("Directory:", file.Record.IsDirectory())
 		if file.Record.IsDirectory() {
