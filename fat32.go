@@ -447,9 +447,10 @@ func (file File) Read() []byte {
 		byteFATStart := secFAT * uint32(fs.BPB.BytsPerSec)
 		fs.Data.Seek(int64(byteFATStart+offsetFAT), 0)
 
-		if fs.DetermineType() == FAT12 {
+		t := fs.DetermineType()
+		if t == FAT12 {
 			// TODO support FAT12
-		} else if fs.DetermineType() == FAT16 {
+		} else if t == FAT16 {
 			var fat uint16
 			binary.Read(fs.Data, binary.LittleEndian, &fat)
 			if fat >= eocFAT16 {
