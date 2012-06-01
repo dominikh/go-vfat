@@ -336,6 +336,8 @@ func main() {
 	var curLongNameString string
 	files := make([]File, 0)
 
+	// TODO figure out how many files there can be max
+	// maybe we don't even need an upper bound because of the EOD entry
 	for i := 0; i < 20; i++ {
 		file := &FileRecord{}
 		err := binary.Read(r, binary.LittleEndian, file)
@@ -416,16 +418,27 @@ func (fs FS) ReadFile(file File) []byte {
 		byteFATStart := secFAT * uint32(fs.BPB.BytsPerSec)
 		fs.Data.Seek(int64(byteFATStart+offsetFAT), 0)
 
-		var fat uint32
-		binary.Read(fs.Data, binary.LittleEndian, &fat)
-		fat &= 0x0FFFFFFF
+		if fs.DetermineType() == FAT12 {
+			// TODO support FAT12
+		} else if fs.DetermineType() == FAT16 {
+			var fat uint16
+			binary.Read(fs.Data, binary.LittleEndian, &fat)
+			if fat >= 0xFFF8 {
+				break
+			}
 
-		if fat >= 0x0FFFFFF8 {
-			// we reached an EOC
-			break
+			cluster = uint32(fat)
+		} else {
+			var fat uint32
+			binary.Read(fs.Data, binary.LittleEndian, &fat)
+			fat &= 0x0FFFFFFF
+
+			if fat >= 0x0FFFFFF8 {
+				break
+			}
+
+			cluster = fat
 		}
-
-		cluster = fat
 	}
 
 	return ret.Bytes()
