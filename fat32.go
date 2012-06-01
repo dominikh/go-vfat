@@ -18,6 +18,7 @@ import (
 )
 
 type Attribute uint8
+type Type uint8
 
 const (
 	eocFAT32 = 0x0FFFFFF8
@@ -25,8 +26,8 @@ const (
 )
 
 const (
-	fat12ClusterCount uint32 = 4085
-	fat16ClusterCount        = 65525
+	fat12ClusterCount = 4085
+	fat16ClusterCount = 65525
 )
 
 const (
@@ -37,6 +38,13 @@ const (
 	AttrDirectory           = 0x10
 	AttrArchive             = 0x20
 	AttrLongName            = AttrReadOnly | AttrHidden | AttrSystem | AttrVolumeID
+)
+
+const (
+	FAT12 Type = iota
+	FAT16
+	FAT32
+	UnknownType
 )
 
 type BPBBase struct {
@@ -87,15 +95,6 @@ type BPB32 struct {
 	BPB32Base
 	BPB16Base
 }
-
-type Type uint8
-
-const (
-	FAT12 Type = iota
-	FAT16
-	FAT32
-	UnknownType
-)
 
 type FS struct {
 	BPB  *BPB32
