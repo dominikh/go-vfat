@@ -19,10 +19,19 @@ import (
 
 type Attribute uint8
 type Type uint8
+type ClusterStatus int
+
+const (
+	EOC ClusterStatus = iota
+	UnusedCluster
+	BadCluster
+	NextCluster
+)
 
 const (
 	eocFAT32 = 0x0FFFFFF8
 	eocFAT16 = 0xFFF8
+	eocFAT12 = eocFAT16
 )
 
 const (
@@ -176,6 +185,7 @@ func (fs FS) ClusterToEntry(cluster uint32) (uint32, uint32) {
 
 	switch fs.Type {
 	case FAT12:
+		fatOffset = cluster + (cluster / 2)
 	case FAT16:
 		fatOffset = cluster * 2
 	case FAT32:
@@ -443,33 +453,59 @@ func (file File) Read() []byte {
 		readTotal += uint32(read)
 		ret.Write(buf[0:toRead])
 
-		secFAT, offsetFAT := fs.ClusterToEntry(cluster)
-		byteFATStart := secFAT * uint32(fs.BPB.BytsPerSec)
-		fs.Data.Seek(int64(byteFATStart+offsetFAT), 0)
-
-		t := fs.DetermineType()
-		if t == FAT12 {
-			// TODO support FAT12
-		} else if t == FAT16 {
-			var fat uint16
-			binary.Read(fs.Data, binary.LittleEndian, &fat)
-			if fat >= eocFAT16 {
-				break
-			}
-
-			cluster = uint32(fat)
-		} else {
-			var fat uint32
-			binary.Read(fs.Data, binary.LittleEndian, &fat)
-			fat &= 0x0FFFFFFF
-
-			if fat >= eocFAT32 {
-				break
-			}
-
-			cluster = fat
+		nextCluster, status := fs.ReadFAT(cluster)
+		if status == EOC {
+			break;
 		}
+
+		cluster = nextCluster
 	}
 
 	return ret.Bytes()
 }
+
+func (fs FS) ReadFAT(cluster uint32) (newCluster uint32, status ClusterStatus) {
+	status = NextCluster
+
+	secFAT, offsetFAT := fs.ClusterToEntry(cluster)
+	byteFATStart := secFAT * uint32(fs.BPB.BytsPerSec)
+	fs.Data.Seek(int64(byteFATStart+offsetFAT), 0)
+
+	t := fs.DetermineType()
+	if t == FAT12 {
+		var fat uint16
+		binary.Read(fs.Data, binary.LittleEndian, &fat)
+		if cluster%2 == 0 {
+			fat &= 0x0FFF
+		} else {
+			fat >>= 4
+		}
+
+		if fat >= eocFAT12 {
+			status = EOC
+		}
+
+		newCluster = uint32(fat)
+	} else if t == FAT16 {
+		var fat uint16
+		binary.Read(fs.Data, binary.LittleEndian, &fat)
+		if fat >= eocFAT16 {
+			status = EOC
+		}
+
+		newCluster = uint32(fat)
+	} else {
+		var fat uint32
+		binary.Read(fs.Data, binary.LittleEndian, &fat)
+		fat &= 0x0FFFFFFF
+
+		if fat >= eocFAT32 {
+			status = EOC
+		}
+
+		newCluster = fat
+	}
+
+	return
+}
+
