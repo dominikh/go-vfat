@@ -245,11 +245,11 @@ func (file FileRecord) ProperName() string {
 }
 
 func (file FileRecord) IsDirectory() bool {
-	return file.Attr&AttrDirectory > 0
+	return (file.Attr & AttrDirectory) > 0
 }
 
 func (file FileRecord) IsLongName() bool {
-	return file.Attr&AttrLongName > 0
+	return (file.Attr & AttrLongName) > 0
 }
 
 func (file FileRecord) ToLongName() *LongName {
@@ -289,7 +289,7 @@ type LongName struct {
 }
 
 func (ln LongName) IsLast() bool {
-	return ln.Sequence&0x40 > 0
+	return (ln.Sequence & 0x40) > 0
 }
 
 func (ln LongName) String() string {
@@ -311,7 +311,7 @@ type File struct {
 
 func (file FileRecord) FirstCluster() uint32 {
 	// TODO does this also support FAT12 and FAT16?
-	return uint32(file.FstClusHI&0x0FFF) | uint32(file.FstClusLO)
+	return (uint32(file.FstClusHI & 0x0FFF)) | uint32(file.FstClusLO)
 }
 
 func main() {
@@ -331,9 +331,9 @@ func main() {
 	listFiles(fs, files)
 }
 
-func listFiles(fs *FS, files []File) ( ) {
-    for _, file := range files {
-				fmt.Println("Name:", file.LongName)
+func listFiles(fs *FS, files []File) {
+	for _, file := range files {
+		fmt.Println("Name:", file.LongName)
 		fmt.Println("Size:", file.Record.FileSize)
 		fmt.Println("Data:", string(fs.ReadFile(file)))
 		fmt.Println("Directory:", file.Record.IsDirectory())
@@ -342,7 +342,6 @@ func listFiles(fs *FS, files []File) ( ) {
 		}
 	}
 }
-
 
 func (fs FS) readDirectoryFromSector(sector uint32) []File {
 	firstByte := sector * uint32(fs.BPB.BytsPerSec)
@@ -429,7 +428,7 @@ func (fs FS) ReadFile(file File) []byte {
 		// TODO check error
 
 		toRead := readSize
-		if toRead > file.Record.FileSize - readTotal {
+		if toRead > (file.Record.FileSize - readTotal) {
 			toRead = file.Record.FileSize - readTotal
 		}
 
