@@ -370,9 +370,6 @@ func (fs FS) readDirectoryFromSector(sector uint32) []File {
 			break
 		}
 
-		if file.IsDirectory() {
-		}
-
 		if file.IsLongName() {
 			ln := file.ToLongName()
 			if ln.IsLast() {
