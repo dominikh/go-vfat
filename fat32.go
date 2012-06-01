@@ -377,11 +377,8 @@ func main() {
 	}
 
 	for _, file := range files {
-		if file.LongName == "2012-05-13-231705_3840x1080_scrot.png" {
-			// fmt.Printf("%#v\n", file.LongName)
-			// fmt.Println("Data:", string(fs.ReadFile(file)))
-			fmt.Print(string(fs.ReadFile(file)))
-		}
+		fmt.Printf("%#v\n", file.LongName)
+		fmt.Println("Data:", string(fs.ReadFile(file)))
 	}
 }
 
