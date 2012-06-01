@@ -127,6 +127,7 @@ func (fs FS) FATSectorCount() uint32 {
 
 func (fs FS) RootDirSectorCount() (sectors uint32) {
 	// Taken straight from the specification
+	// Works for 12, 16 and 32
 	// TODO check if it's be faster to just always do the math operations
 	switch fs.Type {
 	case FAT12, FAT16:
@@ -141,10 +142,12 @@ func (fs FS) RootDirSectorCount() (sectors uint32) {
 
 func (fs FS) FirstDataSector() uint32 {
 	// Taken straight from the specification
+	// Works for 12, 16 and 32
 	return uint32(fs.BPB.ResvdSecCnt) + (uint32(fs.BPB.NumFATs) * fs.FATSectorCount()) + fs.RootDirSectorCount()
 }
 
 func (fs FS) TotalSectorCount() uint32 {
+	// Works for 12(?), 16 and 32
 	if fs.BPB.TotSec16 != 0 {
 		return uint32(fs.BPB.TotSec16)
 	}
@@ -158,10 +161,12 @@ func (fs FS) DataSectorCount() uint32 {
 
 func (fs FS) FirstSectorOfCluster(cluster uint32) uint32 {
 	// Taken straight from the specification
+	// Works for 12, 16 and 32
 	return ((cluster - 2) * uint32(fs.BPB.SecPerClus)) + fs.FirstDataSector()
 }
 
 func (fs FS) ClusterToEntry(cluster uint32) (uint32, uint32) {
+	// Works for 16 and 32
 	var fatOffset uint32
 
 	switch fs.Type {
@@ -179,6 +184,7 @@ func (fs FS) ClusterToEntry(cluster uint32) (uint32, uint32) {
 }
 
 func (fs FS) ClusterCount() uint32 {
+	// Works for 12, 16 and 32
 	// round down
 	return fs.DataSectorCount() / uint32(fs.BPB.SecPerClus)
 }
