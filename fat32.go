@@ -9,6 +9,7 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -339,7 +340,7 @@ func listFiles(fs *FS, files []File) {
 		fmt.Println("Data:", string(file.Read()))
 		fmt.Println("Directory:", file.Record.IsDirectory())
 		if file.Record.IsDirectory() {
-			subfiles := file.Files()
+			subfiles, _ := file.Files()
 			listFiles(fs, subfiles[2:])
 		}
 	}
@@ -404,8 +405,12 @@ func (fs FS) readDirectoryFromSector(sector uint32) []File {
 
 // TODO think of a clever handling of . and .. entries (which, btw, do
 // not exist in the root directory)
-func (file File) Files() ([]File) {
-	return file.fs.readDirectoryFromSector(file.fs.FirstSectorOfCluster(file.Record.FirstCluster()))
+func (file File) Files() ([]File, error) {
+	if !file.Record.IsDirectory() {
+		return nil, errors.New("not a directory")
+	}
+
+	return file.fs.readDirectoryFromSector(file.fs.FirstSectorOfCluster(file.Record.FirstCluster())), nil
 }
 
 func (file File) Read() []byte {
