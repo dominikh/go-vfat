@@ -324,19 +324,29 @@ func main() {
 	case FAT32:
 		rootSector = fs.FirstSectorOfCluster(fs.BPB.RootClus)
 	}
-	byteStart := rootSector * uint32(fs.BPB.BytsPerSec)
 
-	r.Seek(int64(byteStart), 0)
+	files := fs.readDirectoryFromSector(rootSector)
+
+
+	for _, file := range files {
+		fmt.Println("Name:", file.LongName)
+		fmt.Println("Size:", file.Record.FileSize)
+		fmt.Println("Data:", string(fs.ReadFile(file)))
+	}
+}
+
+func (fs FS) readDirectoryFromSector(sector uint32) []File {
+	firstByte := sector * uint32(fs.BPB.BytsPerSec)
+
+	fs.Data.Seek(int64(firstByte), 0)
 
 	var curLongName []string
 	var curLongNameString string
 	files := make([]File, 0)
 
-	// TODO figure out how many files there can be max
-	// maybe we don't even need an upper bound because of the EOD entry
 	for i := 0; i < 20; i++ {
 		file := &FileRecord{}
-		err := binary.Read(r, binary.LittleEndian, file)
+		err := binary.Read(fs.Data, binary.LittleEndian, file)
 		if err != nil {
 			fmt.Println("Error:", err)
 		}
@@ -379,10 +389,11 @@ func main() {
 		}
 	}
 
-	for _, file := range files {
-		fmt.Printf("%#v\n", file.LongName)
-		fmt.Println("Data:", string(fs.ReadFile(file)))
-	}
+	return files
+}
+
+func (fs FS) ReadDirectory(file File) []File {
+	return fs.readDirectoryFromSector(fs.FirstSectorOfCluster(file.Record.FirstCluster()))
 }
 
 func (fs FS) ReadFile(file File) []byte {
