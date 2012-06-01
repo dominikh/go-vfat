@@ -321,9 +321,14 @@ func main() {
 	r, _ := os.Open(os.Args[1])
 	fs := NewFS(r)
 
-	rootCluster := fs.BPB.RootClus // only for FAT32
-	sec := fs.FirstSectorOfCluster(rootCluster)
-	byteStart := sec * uint32(fs.BPB.BytsPerSec)
+	var rootSector uint32
+	switch fs.DetermineType() {
+	case FAT12, FAT16:
+		rootSector = uint32(fs.BPB.ResvdSecCnt + (uint16(fs.BPB.NumFATs) * fs.BPB.FATSz16))
+	case FAT32:
+		rootSector = fs.FirstSectorOfCluster(fs.BPB.RootClus)
+	}
+	byteStart := rootSector * uint32(fs.BPB.BytsPerSec)
 
 	r.Seek(int64(byteStart), 0)
 
