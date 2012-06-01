@@ -11,7 +11,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"math"
 	"os"
 	"strings"
 	"unicode/utf16"
@@ -129,10 +128,11 @@ func (fs FS) RootDirSectorCount() (sectors uint32) {
 	// Taken straight from the specification
 	// Works for 12, 16 and 32
 	// TODO check if it's be faster to just always do the math operations
+
+	// Microsoft claims that this should be rounded up, but that produces off by ones…
 	switch fs.Type {
 	case FAT12, FAT16:
-		sectors_unrounded := float64(((fs.BPB.RootEntCnt * 32) + (fs.BPB.BytsPerSec - 1))) / float64(fs.BPB.BytsPerSec)
-		sectors = uint32(math.Ceil(sectors_unrounded))
+		sectors = uint32(((fs.BPB.RootEntCnt * 32) + (fs.BPB.BytsPerSec - 1)) / (fs.BPB.BytsPerSec))
 	case FAT32:
 		sectors = 0
 	}
