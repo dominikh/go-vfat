@@ -307,6 +307,7 @@ type File struct {
 	ShortName string
 	LongName  string
 	Record    *FileRecord
+	fs        FS
 }
 
 func (file FileRecord) FirstCluster() uint32 {
@@ -335,10 +336,11 @@ func listFiles(fs *FS, files []File) {
 	for _, file := range files {
 		fmt.Println("Name:", file.LongName)
 		fmt.Println("Size:", file.Record.FileSize)
-		fmt.Println("Data:", string(fs.ReadFile(file)))
+		fmt.Println("Data:", string(file.Read()))
 		fmt.Println("Directory:", file.Record.IsDirectory())
 		if file.Record.IsDirectory() {
-			listFiles(fs, fs.ReadDirectory(file)[2:])
+			subfiles := file.Files()
+			listFiles(fs, subfiles[2:])
 		}
 	}
 }
@@ -385,7 +387,7 @@ func (fs FS) readDirectoryFromSector(sector uint32) []File {
 				curLongNameString = strings.Split(string(strings.Join(curLongName, "")), "\x00\uFFFF")[0]
 			}
 		} else {
-			newFile := File{"", "", file}
+			newFile := File{"", "", file, fs}
 			if curLongNameString != "" {
 				newFile.LongName = curLongNameString
 				curLongNameString = ""
@@ -402,13 +404,13 @@ func (fs FS) readDirectoryFromSector(sector uint32) []File {
 
 // TODO think of a clever handling of . and .. entries (which, btw, do
 // not exist in the root directory)
-func (fs FS) ReadDirectory(file File) []File {
-	return fs.readDirectoryFromSector(fs.FirstSectorOfCluster(file.Record.FirstCluster()))
+func (file File) Files() ([]File) {
+	return file.fs.readDirectoryFromSector(file.fs.FirstSectorOfCluster(file.Record.FirstCluster()))
 }
 
-func (fs FS) ReadFile(file File) []byte {
+func (file File) Read() []byte {
 	ret := bytes.Buffer{}
-
+	fs := file.fs
 	// Technically, the max cluster size could be 4096 * 128 (19 bit),
 	// but according to the specification, 1024 * 64 (16 bit) is the
 	// maximum that is expected to work. On the other hand,
