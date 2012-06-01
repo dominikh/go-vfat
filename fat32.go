@@ -82,9 +82,6 @@ type BPB32 struct {
 	BPB16Base
 }
 
-type FAT struct {
-}
-
 type Type uint8
 
 const (
@@ -97,7 +94,6 @@ const (
 type FS struct {
 	BPB  *BPB32
 	Type Type
-	FAT  *FAT
 	Data io.ReadSeeker
 }
 
@@ -212,7 +208,7 @@ func NewFS(r io.ReadSeeker) *FS {
 		// TODO error handling
 	}
 
-	fs := &FS{bpb32, UnknownType, nil, r}
+	fs := &FS{bpb32, UnknownType, r}
 	t := fs.DetermineType()
 	switch t {
 	case FAT32:
@@ -227,7 +223,7 @@ func NewFS(r io.ReadSeeker) *FS {
 			// TODO error handling
 		}
 		bpb32 = &BPB32{bpb16.BPBBase, BPB32Base{0, 0, 0, 0, 0, 0, [12]byte{}}, bpb16.BPB16Base}
-		fs = &FS{bpb32, t, nil, r}
+		fs = &FS{bpb32, t, r}
 	}
 
 	return fs
