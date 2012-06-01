@@ -302,6 +302,7 @@ func (ln LongName) String() string {
 	return string(utf16.Decode(s))
 }
 
+// TODO maybe put a reference to the FS into File to nicen up the API?
 type File struct {
 	ShortName string
 	LongName  string
@@ -327,13 +328,22 @@ func main() {
 
 	files := fs.readDirectoryFromSector(rootSector)
 
+	listFiles(fs, files)
+}
 
-	for _, file := range files {
-		fmt.Println("Name:", file.LongName)
+func listFiles(fs *FS, files []File) ( ) {
+    for _, file := range files {
+				fmt.Println("Name:", file.LongName)
 		fmt.Println("Size:", file.Record.FileSize)
+		// FIXME apparently there is a trailing newline in the data
 		fmt.Println("Data:", string(fs.ReadFile(file)))
+		fmt.Println("Directory:", file.Record.IsDirectory())
+		if file.Record.IsDirectory() {
+			listFiles(fs, fs.ReadDirectory(file)[2:])
+		}
 	}
 }
+
 
 func (fs FS) readDirectoryFromSector(sector uint32) []File {
 	firstByte := sector * uint32(fs.BPB.BytsPerSec)
@@ -392,6 +402,8 @@ func (fs FS) readDirectoryFromSector(sector uint32) []File {
 	return files
 }
 
+// TODO think of a clever handling of . and .. entries (which, btw, do
+// not exist in the root directory)
 func (fs FS) ReadDirectory(file File) []File {
 	return fs.readDirectoryFromSector(fs.FirstSectorOfCluster(file.Record.FirstCluster()))
 }
