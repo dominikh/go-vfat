@@ -132,7 +132,6 @@ func (fs FS) RootDirSectorCount() (sectors uint32) {
 	case FAT12, FAT16:
 		sectors_unrounded := float64(((fs.BPB.RootEntCnt * 32) + (fs.BPB.BytsPerSec - 1))) / float64(fs.BPB.BytsPerSec)
 		sectors = uint32(math.Ceil(sectors_unrounded))
-		fmt.Println(sectors_unrounded, sectors)
 	case FAT32:
 		sectors = 0
 	}
