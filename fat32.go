@@ -387,8 +387,18 @@ func main() {
 
 func (fs FS) ReadFile(file File) []byte {
 	ret := bytes.Buffer{}
-	// TODO do we need uint32 here or would uint16 be enough?
-	buf := make([]byte, uint32(fs.BPB.BytsPerSec)*uint32(fs.BPB.SecPerClus))
+
+	// Technically, the max cluster size could be 4096 * 128 (19 bit),
+	// but according to the specification, 1024 * 64 (16 bit) is the
+	// maximum that is expected to work. On the other hand,
+	// file.Record.FileSize is 32 bit, so using that for the readSize
+	// to avoid casts.
+	readSize := uint32(fs.BPB.BytsPerSec) * uint32(fs.BPB.SecPerClus)
+	if readSize > file.Record.FileSize {
+		readSize = file.Record.FileSize
+	}
+
+	buf := make([]byte, readSize)
 	cluster := file.Record.FirstCluster()
 	readTotal := uint32(0)
 	for {
@@ -396,12 +406,12 @@ func (fs FS) ReadFile(file File) []byte {
 		fs.Data.Seek(int64(byteStart), 0)
 		// TODO check error
 
-		toRead := file.Record.FileSize - readTotal
-		if toRead > uint32(fs.BPB.BytsPerSec)*uint32(fs.BPB.SecPerClus) {
-			toRead = uint32(fs.BPB.BytsPerSec) * uint32(fs.BPB.SecPerClus)
+		toRead := readSize
+		if toRead > file.Record.FileSize - readTotal {
+			toRead = file.Record.FileSize - readTotal
 		}
+
 		// fmt.Printf("Going to read %d bytes... ", toRead)
-		// TODO actually check how big a sector can be max and use the appropriate type instead of uint32
 		read, _ := io.ReadAtLeast(fs.Data, buf, int(toRead))
 		// fmt.Printf("read %d bytes\n", read)
 		readTotal += uint32(read)
