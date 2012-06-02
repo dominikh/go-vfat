@@ -1,9 +1,3 @@
-// little endian
-
-// 4 regions: reserved, FAT, root directory (non-existent on fat32),
-// file/directory data
-
-// package fat32 // TODO probably turn this into a general fat12/16/32 library
 package main
 
 import (
