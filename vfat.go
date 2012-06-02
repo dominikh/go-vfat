@@ -324,20 +324,23 @@ func (file FileRecord) FirstCluster() uint32 {
 	return (uint32(file.FstClusHI & 0x0FFF)) | uint32(file.FstClusLO)
 }
 
-func main() {
-	r, _ := os.Open(os.Args[1])
-	fs := NewFS(r)
-
-	var rootSector uint32
-	switch fs.DetermineType() {
+func (fs FS) RootSector( ) (rootSector uint32) {
+    switch fs.DetermineType() {
 	case FAT12, FAT16:
 		rootSector = uint32(fs.BPB.ResvdSecCnt + (uint16(fs.BPB.NumFATs) * fs.BPB.FATSz16))
 	case FAT32:
 		rootSector = fs.FirstSectorOfCluster(fs.BPB.RootClus)
 	}
 
-	files := fs.readDirectoryFromSector(rootSector)
+	return
+}
 
+
+func main() {
+	r, _ := os.Open(os.Args[1])
+	fs := NewFS(r)
+
+	files := fs.readDirectoryFromSector(fs.RootSector())
 	listFiles(fs, files)
 }
 
