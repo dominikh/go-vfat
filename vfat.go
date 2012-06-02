@@ -357,7 +357,7 @@ func listFiles(fs *FS, files []File) {
 	}
 }
 
-func (fs FS) readDirectoryFromSector(sector uint32) []File {
+func (fs FS) ReadDirectoryFromSector(sector uint32) []File {
 	firstByte := sector * uint32(fs.BPB.BytsPerSec)
 
 	fs.Data.Seek(int64(firstByte), 0)
@@ -418,7 +418,7 @@ func (file File) Files() ([]File, error) {
 		return nil, errors.New("not a directory")
 	}
 
-	return file.fs.readDirectoryFromSector(file.fs.FirstSectorOfCluster(file.FirstCluster())), nil
+	return file.fs.ReadDirectoryFromSector(file.fs.FirstSectorOfCluster(file.FirstCluster())), nil
 }
 
 func (file File) Read() []byte {
