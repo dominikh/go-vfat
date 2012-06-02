@@ -180,7 +180,7 @@ func (fs FS) FirstSectorOfCluster(cluster uint32) uint32 {
 	return ((cluster - 2) * uint32(fs.BPB.SecPerClus)) + fs.FirstDataSector()
 }
 
-func (fs FS) ClusterToEntry(cluster uint32) (uint32, uint32) {
+func (fs FS) ClusterToFATEntry(cluster uint32) (uint32, uint32) {
 	// Works for 16 and 32
 	var fatOffset uint32
 
@@ -514,7 +514,7 @@ func (fs FS) ClusterStatus(cluster uint32) ClusterStatus {
 }
 
 func (fs FS) ReadFAT(cluster uint32) (newCluster uint32, status ClusterStatus) {
-	secFAT, offsetFAT := fs.ClusterToEntry(cluster)
+	secFAT, offsetFAT := fs.ClusterToFATEntry(cluster)
 	byteFATStart := secFAT * uint32(fs.BPB.BytsPerSec)
 	fs.Data.Seek(int64(byteFATStart+offsetFAT), 0)
 
