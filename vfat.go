@@ -1,4 +1,4 @@
-package main
+package vfat
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"unicode/utf16"
 )
@@ -333,28 +332,6 @@ func (fs FS) RootSector( ) (rootSector uint32) {
 	}
 
 	return
-}
-
-
-func main() {
-	r, _ := os.Open(os.Args[1])
-	fs := NewFS(r)
-
-	files := fs.readDirectoryFromSector(fs.RootSector())
-	listFiles(fs, files)
-}
-
-func listFiles(fs *FS, files []File) {
-	for _, file := range files {
-		fmt.Println("Name:", file.LongName)
-		fmt.Println("Size:", file.FileSize)
-		fmt.Println("Data:", string(file.Read()))
-		fmt.Println("Directory:", file.IsDirectory())
-		if file.IsDirectory() {
-			subfiles, _ := file.Files()
-			listFiles(fs, subfiles[2:])
-		}
-	}
 }
 
 func (fs FS) ReadDirectoryFromSector(sector uint32) []File {
