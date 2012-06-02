@@ -1,16 +1,12 @@
 package vfat
 
 import (
-	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
-	"unicode/utf16"
 )
 
-type Attribute uint8
 type Type uint8
 type ClusterStatus int
 
@@ -34,89 +30,16 @@ const (
 )
 
 const (
-	AttrReadOnly  Attribute = 0x01
-	AttrHidden              = 0x02
-	AttrSystem              = 0x04
-	AttrVolumeID            = 0x08
-	AttrDirectory           = 0x10
-	AttrArchive             = 0x20
-	AttrLongName            = AttrReadOnly | AttrHidden | AttrSystem | AttrVolumeID
-)
-
-const (
 	FAT12 Type = iota
 	FAT16
 	FAT32
 	UnknownType
 )
 
-type BPBBase struct {
-	JmpBoot     [3]byte
-	OEMName     [8]byte
-	BytsPerSec  uint16 // one of 512, 1024, 2048, 4096
-	SecPerClus  uint8  // must be power of 2 > 0
-	ResvdSecCnt uint16 // must not be 0; should be 1 for fat12/fat16
-	NumFATs     uint8  // should be 2
-	RootEntCnt  uint16
-	TotSec16    uint16 // must be 0 for fat32
-	Media       uint8  // maybe use constants here
-	FATSz16     uint16 // must be 0 for fat32
-	SecPerTrk   uint16
-	NumHeads    uint16
-	HiddSec     uint32
-	TotSec32    uint32
-}
-
-type BPB12 BPB16
-
-type BPB16Base struct {
-	DrvNum     uint8
-	Reserved1  uint8
-	BootSig    uint8
-	VolID      [4]byte
-	VolLab     [11]byte
-	FilSysType [8]byte // maybe use constants here
-}
-
-type BPB16 struct {
-	BPBBase
-	BPB16Base
-}
-
-type BPB32Base struct {
-	FATSz32   uint32
-	ExtFlags  uint16
-	FSVer     uint16
-	RootClus  uint32
-	FSInfo    uint16
-	BkBootSec uint16
-	Reserved  [12]byte // Set this to zeros when formatting
-}
-
-type BPB32 struct {
-	BPBBase
-	BPB32Base
-	BPB16Base
-}
-
 type FS struct {
 	BPB  *BPB32
 	Type Type
 	Data io.ReadSeeker
-}
-
-type FileRecord struct {
-	// 32 bytes in total
-	Name         [11]byte
-	Attr         Attribute
-	NTRes        uint8
-	CrtTimeTenth uint8
-	Padding      [6]byte
-	FstClusHI    uint16
-	WrtTime      uint16
-	WrtDate      uint16
-	FstClusLO    uint16
-	FileSize     uint32
 }
 
 func (fs FS) FATSectorCount() uint32 {
@@ -238,93 +161,8 @@ func NewFS(r io.ReadSeeker) *FS {
 	return fs
 }
 
-func (file FileRecord) ProperName() string {
-	// Works for 12, 16 and 32
-	s := &bytes.Buffer{}
-
-	if file.Name[0] == 0x05 {
-		s.WriteByte(0xE5)
-	} else {
-		s.WriteByte(file.Name[0])
-	}
-
-	s.Write(file.Name[1:])
-
-	return s.String()
-}
-
-func (file FileRecord) IsDirectory() bool {
-	return (file.Attr & AttrDirectory) > 0
-}
-
-func (file FileRecord) IsLongName() bool {
-	return (file.Attr & AttrLongName) > 0
-}
-
-func (file FileRecord) ToLongName() *LongName {
-	buf := &bytes.Buffer{}
-	err := binary.Write(buf, binary.LittleEndian, file)
-	if err != nil {
-		// TODO error checking
-	}
-
-	ln := &LongName{}
-	err = binary.Read(buf, binary.LittleEndian, ln)
-
-	if err != nil {
-		// TODO error checking
-	}
-
-	return ln
-}
-
-func (file FileRecord) IsUnused() bool {
-	return file.Name[0] == 0xE5
-}
-
-func (file FileRecord) IsEOD() bool {
-	return file.Name[0] == 0
-}
-
-type LongName struct {
-	Sequence uint8
-	Part1    [5]uint16
-	Attr     Attribute
-	Reserved byte
-	Checksum byte
-	Part2    [6]uint16
-	FstClus  uint16
-	Part3    [2]uint16
-}
-
-func (ln LongName) IsLast() bool {
-	return (ln.Sequence & 0x40) > 0
-}
-
-func (ln LongName) String() string {
-	s := make([]uint16, 0, 13)
-
-	s = append(s, ln.Part1[:]...)
-	s = append(s, ln.Part2[:]...)
-	s = append(s, ln.Part3[:]...)
-
-	return string(utf16.Decode(s))
-}
-
-type File struct {
-	ShortName string
-	LongName  string
-	*FileRecord
-	fs FS
-}
-
-func (file FileRecord) FirstCluster() uint32 {
-	// TODO does this also support FAT12 and FAT16?
-	return (uint32(file.FstClusHI & 0x0FFF)) | uint32(file.FstClusLO)
-}
-
-func (fs FS) RootSector( ) (rootSector uint32) {
-    switch fs.DetermineType() {
+func (fs FS) RootSector() (rootSector uint32) {
+	switch fs.DetermineType() {
 	case FAT12, FAT16:
 		rootSector = uint32(fs.BPB.ResvdSecCnt + (uint16(fs.BPB.NumFATs) * fs.BPB.FATSz16))
 	case FAT32:
@@ -386,57 +224,6 @@ func (fs FS) ReadDirectoryFromSector(sector uint32) []File {
 	}
 
 	return files
-}
-
-// TODO think of a clever handling of . and .. entries (which, btw, do
-// not exist in the root directory)
-func (file File) Files() ([]File, error) {
-	if !file.IsDirectory() {
-		return nil, errors.New("not a directory")
-	}
-
-	return file.fs.ReadDirectoryFromSector(file.fs.FirstSectorOfCluster(file.FirstCluster())), nil
-}
-
-func (file File) Read() []byte {
-	ret := bytes.Buffer{}
-	fs := file.fs
-	// Technically, the max cluster size could be 4096 * 128 (19 bit),
-	// but according to the specification, 1024 * 64 (16 bit) is the
-	// maximum that is expected to work. On the other hand,
-	// file.Record.FileSize is 32 bit, so using that for the readSize
-	// to avoid casts.
-	readSize := uint32(fs.BPB.BytsPerSec) * uint32(fs.BPB.SecPerClus)
-	if readSize > file.FileSize {
-		readSize = file.FileSize
-	}
-
-	buf := make([]byte, readSize)
-	cluster := file.FirstCluster()
-	readTotal := uint32(0)
-	for {
-		byteStart := fs.FirstSectorOfCluster(cluster) * uint32(fs.BPB.BytsPerSec)
-		fs.Data.Seek(int64(byteStart), 0)
-		// TODO check error
-
-		toRead := readSize
-		if toRead > (file.FileSize - readTotal) {
-			toRead = file.FileSize - readTotal
-		}
-
-		read, _ := io.ReadAtLeast(fs.Data, buf, int(toRead))
-		readTotal += uint32(read)
-		ret.Write(buf[0:toRead])
-
-		nextCluster, status := fs.ReadFAT(cluster)
-		if status == EOC {
-			break
-		}
-
-		cluster = nextCluster
-	}
-
-	return ret.Bytes()
 }
 
 func (fs FS) ClusterStatus(cluster uint32) ClusterStatus {
