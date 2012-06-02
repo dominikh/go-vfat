@@ -2,7 +2,6 @@ package vfat
 
 import (
 	"encoding/binary"
-	"fmt"
 	"io"
 	"strings"
 )
@@ -185,7 +184,7 @@ func (fs FS) ReadDirectoryFromSector(sector uint32) []File {
 		file := &FileRecord{}
 		err := binary.Read(fs.Data, binary.LittleEndian, file)
 		if err != nil {
-			fmt.Println("Error:", err)
+			// TODO return error
 		}
 
 		if file.IsUnused() {
